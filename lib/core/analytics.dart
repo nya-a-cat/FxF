@@ -74,7 +74,16 @@ class BacktestEngine {
     for (var i = 1; i < equity.length; i++) {
       if (equity[i - 1] != 0) returns.add(equity[i] / equity[i - 1] - 1);
     }
-    return BacktestResult(equity: equity, trades: trades, totalReturn: totalReturn, cagr: cagr, sharpe: RiskAnalytics.sharpe(returns), sortino: RiskAnalytics.sortino(returns), maxDrawdown: RiskAnalytics.maxDrawdown(equity), winRate: trades == 0 ? 0 : wins / trades);
+    return BacktestResult(
+      equity: equity,
+      trades: trades,
+      totalReturn: totalReturn,
+      cagr: cagr,
+      sharpe: RiskAnalytics.sharpe(returns),
+      sortino: RiskAnalytics.sortino(returns),
+      maxDrawdown: RiskAnalytics.maxDrawdown(equity),
+      winRate: trades == 0 ? 0.0 : wins / trades,
+    );
   }
 
   List<double> _ema(List<double> values, int period) {
@@ -86,26 +95,60 @@ class BacktestEngine {
 }
 
 class RiskAnalytics {
-  static double mean(List<double> xs) => xs.isEmpty ? 0 : xs.reduce((a, b) => a + b) / xs.length;
+  static double mean(List<double> xs) => xs.isEmpty ? 0.0 : xs.reduce((a, b) => a + b) / xs.length;
+
   static double std(List<double> xs) {
-    if (xs.length < 2) return 0;
+    if (xs.length < 2) return 0.0;
     final m = mean(xs);
-    final v = xs.map((x) => math.pow(x - m, 2).toDouble()).reduce((a, b) => a + b) / (xs.length - 1);
-    return math.sqrt(v);
+    final variance = xs.map((x) => math.pow(x - m, 2).toDouble()).reduce((a, b) => a + b) / (xs.length - 1);
+    return math.sqrt(variance);
   }
-  static double sharpe(List<double> returns, {double periodsPerYear = 365 * 24}) { final s = std(returns); return s == 0 ? 0 : mean(returns) / s * math.sqrt(periodsPerYear); }
-  static double sortino(List<double> returns, {double periodsPerYear = 365 * 24}) { final downside = returns.where((x) => x < 0).toList(); final s = std(downside); return s == 0 ? 0 : mean(returns) / s * math.sqrt(periodsPerYear); }
-  static double maxDrawdown(List<double> equity) { if (equity.isEmpty) return 0; var peak = equity.first; var dd = 0.0; for (final x in equity) { if (x > peak) peak = x; final d = peak == 0 ? 0 : x / peak - 1; if (d < dd) dd = d; } return dd; }
-  static double historicalVar(List<double> returns, {double confidence = .95}) { if (returns.isEmpty) return 0; final xs = [...returns]..sort(); final idx = ((1 - confidence) * (xs.length - 1)).floor().clamp(0, xs.length - 1).toInt(); return xs[idx]; }
-  static double historicalCvar(List<double> returns, {double confidence = .95}) { final v = historicalVar(returns, confidence: confidence); final tail = returns.where((r) => r <= v).toList(); return mean(tail); }
+
+  static double sharpe(List<double> returns, {double periodsPerYear = 365 * 24}) {
+    final s = std(returns);
+    return s == 0 ? 0.0 : mean(returns) / s * math.sqrt(periodsPerYear);
+  }
+
+  static double sortino(List<double> returns, {double periodsPerYear = 365 * 24}) {
+    final downside = returns.where((x) => x < 0).toList();
+    final s = std(downside);
+    return s == 0 ? 0.0 : mean(returns) / s * math.sqrt(periodsPerYear);
+  }
+
+  static double maxDrawdown(List<double> equity) {
+    if (equity.isEmpty) return 0.0;
+    var peak = equity.first;
+    var dd = 0.0;
+    for (final x in equity) {
+      if (x > peak) peak = x;
+      final d = peak == 0 ? 0.0 : x / peak - 1;
+      if (d < dd) dd = d;
+    }
+    return dd;
+  }
+
+  static double historicalVar(List<double> returns, {double confidence = .95}) {
+    if (returns.isEmpty) return 0.0;
+    final xs = [...returns]..sort();
+    final idx = ((1 - confidence) * (xs.length - 1)).floor().clamp(0, xs.length - 1).toInt();
+    return xs[idx];
+  }
+
+  static double historicalCvar(List<double> returns, {double confidence = .95}) {
+    final v = historicalVar(returns, confidence: confidence);
+    final tail = returns.where((r) => r <= v).toList();
+    return mean(tail);
+  }
 }
 
 class OptionPayoff {
   static double atExpiration(List<OptionLeg> legs, double underlyingPrice) {
     var pnl = 0.0;
     for (final leg in legs) {
-      final intrinsic = leg.instrument.isCall ? math.max(0, underlyingPrice - leg.instrument.strike).toDouble() : math.max(0, leg.instrument.strike - underlyingPrice).toDouble();
-      pnl += leg.quantity * (intrinsic - leg.premium);
+      final intrinsic = leg.instrument.isCall
+          ? math.max(0, underlyingPrice - leg.instrument.strike).toDouble()
+          : math.max(0, leg.instrument.strike - underlyingPrice).toDouble();
+      pnl += leg.quantity.toDouble() * (intrinsic - leg.premium);
     }
     return pnl;
   }
