@@ -6,9 +6,12 @@ void main() {
   testWidgets('launch gate renders and can enter the app shell', (tester) async {
     await tester.pumpWidget(const FxFApp());
     expect(find.text('启动前提示'), findsOneWidget);
-    expect(find.text('进入 FxF'), findsOneWidget);
 
-    await tester.tap(find.text('进入 FxF'));
+    final enter = find.text('进入 FxF', skipOffstage: false);
+    expect(enter, findsOneWidget);
+    await tester.ensureVisible(enter);
+    await tester.pumpAndSettle();
+    await tester.tap(enter);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
 
