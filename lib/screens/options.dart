@@ -74,9 +74,9 @@ class _OptionsScreenState extends State<OptionsScreen> {
     if (atmCall == null || atmPut == null) return;
 
     final preset = <OptionLeg>[];
-    void add(OptionInstrument o, int q) {
-      final p = _premium(o);
-      if (p != null) preset.add(OptionLeg(instrument: o, quantity: q, premium: p));
+    void add(OptionInstrument option, int quantity) {
+      final premium = _premium(option);
+      if (premium != null) preset.add(OptionLeg(instrument: option, quantity: quantity, premium: premium));
     }
 
     if (name == 'Straddle') {
@@ -247,7 +247,7 @@ class _LegBuilder extends StatelessWidget {
     final lower = minStrike * .7;
     final upper = maxStrike * 1.3;
     final clamped = underlyingPrice.clamp(lower, upper).toDouble();
-    final pnl = sameExpiry ? OptionPayoff.atExpiration(legs, clamped) : null;
+    final pnl = sameExpiry ? OptionPayoff.deribitInverseAtExpiration(legs, clamped) : null;
 
     return GlassCard(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -263,9 +263,9 @@ class _LegBuilder extends StatelessWidget {
           ),
         const Divider(),
         if (sameExpiry) ...[
-          Text('到期标的价格 ${clamped.toStringAsFixed(2)}'),
+          Text('交割价 ${clamped.toStringAsFixed(2)}'),
           Slider(value: clamped, min: lower, max: upper, onChanged: onPriceChanged),
-          Text('到期 P/L ${pnl!.toStringAsFixed(4)}', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 20, color: pnl >= 0 ? FxFColors.positive : FxFColors.negative)),
+          Text('到期 P/L ${pnl!.toStringAsFixed(4)} $currency', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 20, color: pnl! >= 0 ? FxFColors.positive : FxFColors.negative)),
         ] else
           const Text('该组合包含多个到期日。Calendar / Diagonal 的价值依赖时间、波动率和远期曲面，不能用单一到期内在价值图准确表达。', style: TextStyle(color: FxFColors.warning, fontWeight: FontWeight.w700)),
       ]),
