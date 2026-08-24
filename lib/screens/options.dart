@@ -266,7 +266,7 @@ class _LegBuilder extends StatelessWidget {
         if (sameExpiry) ...[
           Text('交割价 ${clamped.toStringAsFixed(2)}'),
           Slider(value: clamped, min: lower, max: upper, onChanged: onPriceChanged),
-          Text('到期 P/L ${pnl!.toStringAsFixed(4)} $unit', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 20, color: pnl >= 0 ? FxFColors.positive : FxFColors.negative)),
+          Text('到期 P/L ${pnl!.toStringAsFixed(4)} $unit', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 20, color: pnl! >= 0 ? FxFColors.positive : FxFColors.negative)),
         ] else
           const Text('该组合包含多个到期日。Calendar / Diagonal 的价值依赖时间、波动率和远期曲面，不能用单一到期内在价值图准确表达。', style: TextStyle(color: FxFColors.warning, fontWeight: FontWeight.w700)),
       ]),
