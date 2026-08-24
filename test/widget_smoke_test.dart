@@ -9,7 +9,8 @@ void main() {
     expect(find.text('进入 FxF'), findsOneWidget);
 
     await tester.tap(find.text('进入 FxF'));
-    await tester.pumpAndSettle(const Duration(milliseconds: 500));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
 
     expect(find.byType(NavigationBar), findsOneWidget);
     expect(find.text('市场概览'), findsOneWidget);
