@@ -24,6 +24,7 @@ class BacktestResult {
 
 class BacktestEngine {
   const BacktestEngine();
+
   BacktestResult emaCross(List<Candle> candles, BacktestConfig cfg) {
     if (cfg.fastEma >= cfg.slowEma) throw ArgumentError('fastEma must be smaller than slowEma');
     if (candles.length <= cfg.slowEma + 2) throw ArgumentError('Not enough candles');
@@ -36,12 +37,14 @@ class BacktestEngine {
     var wins = 0;
     var trades = 0;
     final equity = <double>[];
+
     for (var i = 1; i < candles.length; i++) {
       final px = candles[i].close;
       final wasBelow = fast[i - 1] <= slow[i - 1];
       final nowAbove = fast[i] > slow[i];
       final wasAbove = fast[i - 1] >= slow[i - 1];
       final nowBelow = fast[i] < slow[i];
+
       if (units == 0 && wasBelow && nowAbove) {
         final buyPx = px * (1 + cfg.slippageBps / 10000);
         final fee = cash * cfg.feeBps / 10000;
@@ -59,6 +62,7 @@ class BacktestEngine {
       }
       equity.add(cash + units * px);
     }
+
     if (units > 0) {
       final px = candles.last.close;
       cash = units * px * (1 - cfg.feeBps / 10000);
@@ -66,6 +70,7 @@ class BacktestEngine {
       trades++;
       equity[equity.length - 1] = cash;
     }
+
     final totalReturn = equity.last / cfg.initialCapital - 1;
     final days = candles.last.openTime.difference(candles.first.openTime).inHours / 24.0;
     final years = math.max(days / 365.25, 1 / 365.25).toDouble();
@@ -74,6 +79,7 @@ class BacktestEngine {
     for (var i = 1; i < equity.length; i++) {
       if (equity[i - 1] != 0) returns.add(equity[i] / equity[i - 1] - 1);
     }
+
     return BacktestResult(
       equity: equity,
       trades: trades,
@@ -142,13 +148,30 @@ class RiskAnalytics {
 }
 
 class OptionPayoff {
-  static double atExpiration(List<OptionLeg> legs, double underlyingPrice) {
+  /// Standard linear/fiat-settled European option P/L in quote currency.
+  static double vanillaAtExpiration(List<OptionLeg> legs, double underlyingPrice) {
     var pnl = 0.0;
     for (final leg in legs) {
       final intrinsic = leg.instrument.isCall
           ? math.max(0, underlyingPrice - leg.instrument.strike).toDouble()
           : math.max(0, leg.instrument.strike - underlyingPrice).toDouble();
       pnl += leg.quantity.toDouble() * (intrinsic - leg.premium);
+    }
+    return pnl;
+  }
+
+  /// Deribit BTC/ETH inverse-option P/L in the base coin.
+  ///
+  /// At expiry the USD intrinsic value is divided by the delivery price,
+  /// while the option premium is already quoted in BTC/ETH.
+  static double deribitInverseAtExpiration(List<OptionLeg> legs, double deliveryPrice) {
+    if (deliveryPrice <= 0) throw ArgumentError.value(deliveryPrice, 'deliveryPrice', 'must be positive');
+    var pnl = 0.0;
+    for (final leg in legs) {
+      final intrinsicCoin = leg.instrument.isCall
+          ? math.max(0, deliveryPrice - leg.instrument.strike).toDouble() / deliveryPrice
+          : math.max(0, leg.instrument.strike - deliveryPrice).toDouble() / deliveryPrice;
+      pnl += leg.quantity.toDouble() * (intrinsicCoin - leg.premium);
     }
     return pnl;
   }
