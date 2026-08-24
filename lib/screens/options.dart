@@ -7,7 +7,8 @@ import '../ui.dart';
 
 class OptionsScreen extends StatefulWidget {
   const OptionsScreen({super.key});
-  @override State<OptionsScreen> createState() => _OptionsScreenState();
+  @override
+  State<OptionsScreen> createState() => _OptionsScreenState();
 }
 
 class _OptionsScreenState extends State<OptionsScreen> {
@@ -46,7 +47,7 @@ class _OptionsScreenState extends State<OptionsScreen> {
   void _addLeg(OptionInstrument option, int quantity) {
     final premium = _premium(option);
     if (premium == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('该合约当前没有可用真实报价')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('当前无可用报价')));
       return;
     }
     setState(() {
@@ -67,8 +68,10 @@ class _OptionsScreenState extends State<OptionsScreen> {
     final expiry = selectedExpiry ?? chain.first.expiration;
     final options = chain.where((o) => o.expiration == expiry).toList();
     if (options.isEmpty) return;
-    final calls = options.where((o) => o.isCall && _premium(o) != null).toList()..sort((a, b) => a.strike.compareTo(b.strike));
-    final puts = options.where((o) => !o.isCall && _premium(o) != null).toList()..sort((a, b) => a.strike.compareTo(b.strike));
+    final calls = options.where((o) => o.isCall && _premium(o) != null).toList()
+      ..sort((a, b) => a.strike.compareTo(b.strike));
+    final puts = options.where((o) => !o.isCall && _premium(o) != null).toList()
+      ..sort((a, b) => a.strike.compareTo(b.strike));
     final atmCall = _nearest(options, spot, call: true);
     final atmPut = _nearest(options, spot, call: false);
     if (atmCall == null || atmPut == null) return;
@@ -76,7 +79,9 @@ class _OptionsScreenState extends State<OptionsScreen> {
     final preset = <OptionLeg>[];
     void add(OptionInstrument option, int quantity) {
       final premium = _premium(option);
-      if (premium != null) preset.add(OptionLeg(instrument: option, quantity: quantity, premium: premium));
+      if (premium != null) {
+        preset.add(OptionLeg(instrument: option, quantity: quantity, premium: premium));
+      }
     }
 
     if (name == 'Straddle') {
@@ -96,14 +101,10 @@ class _OptionsScreenState extends State<OptionsScreen> {
       final lowerPuts = puts.where((o) => o.strike < spot).toList();
       final higherCalls = calls.where((o) => o.strike > spot).toList();
       if (lowerPuts.length < 2 || higherCalls.length < 2) return;
-      final shortPut = lowerPuts.last;
-      final longPut = lowerPuts[lowerPuts.length - 2];
-      final shortCall = higherCalls.first;
-      final longCall = higherCalls[1];
-      add(longPut, 1);
-      add(shortPut, -1);
-      add(shortCall, -1);
-      add(longCall, 1);
+      add(lowerPuts[lowerPuts.length - 2], 1);
+      add(lowerPuts.last, -1);
+      add(higherCalls.first, -1);
+      add(higherCalls[1], 1);
     }
 
     setState(() {
@@ -125,6 +126,8 @@ class _OptionsScreenState extends State<OptionsScreen> {
                   IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.arrow_back)),
                   Text('期权实验室', style: Theme.of(context).textTheme.headlineMedium),
                   const Spacer(),
+                  const CharacterAvatar(size: 32),
+                  const SizedBox(width: 8),
                   DropdownButton<String>(
                     value: currency,
                     items: const [
@@ -136,29 +139,39 @@ class _OptionsScreenState extends State<OptionsScreen> {
                     },
                   ),
                 ]),
-                const Text('Deribit Public API · 任意多腿 / 多到期组合', style: TextStyle(color: FxFColors.muted)),
+                const Text('Deribit Public API · 多腿 / 多到期', style: TextStyle(color: FxFColors.muted)),
                 const SizedBox(height: 12),
                 AsyncPane<({List<OptionInstrument> chain, MarketQuote spot})>(
                   future: future,
                   builder: (_, data) {
                     final chain = data.chain;
                     final spot = data.spot.price;
-                    if (chain.isEmpty) return const GlassCard(child: Text('当前没有可用期权合约'));
+                    if (chain.isEmpty) return const GlassCard(child: Text('暂无可用期权合约'));
                     final expiries = chain.map((o) => o.expiration).toSet().toList()..sort();
-                    final expiry = selectedExpiry != null && expiries.contains(selectedExpiry) ? selectedExpiry! : expiries.first;
+                    final expiry = selectedExpiry != null && expiries.contains(selectedExpiry)
+                        ? selectedExpiry!
+                        : expiries.first;
                     final expiryChain = chain.where((o) => o.expiration == expiry).toList();
                     if (payoffPrice == 0) payoffPrice = spot;
 
                     return Column(children: [
                       GlassCard(
                         child: Row(children: [
-                          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                            const Text('标的现价', style: TextStyle(color: FxFColors.muted)),
-                            Text('${data.spot.symbol}  ${spot.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 19)),
-                          ])),
+                          Expanded(
+                            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                              const Text('标的现价', style: TextStyle(color: FxFColors.muted)),
+                              Text(
+                                '${data.spot.symbol}  ${spot.toStringAsFixed(2)}',
+                                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 19),
+                              ),
+                            ]),
+                          ),
                           DropdownButton<DateTime>(
                             value: expiry,
-                            items: [for (final e in expiries) DropdownMenuItem(value: e, child: Text(e.toIso8601String().split('T').first))],
+                            items: [
+                              for (final e in expiries)
+                                DropdownMenuItem(value: e, child: Text(e.toIso8601String().split('T').first)),
+                            ],
                             onChanged: (value) => setState(() => selectedExpiry = value),
                           ),
                         ]),
@@ -189,18 +202,14 @@ class _OptionsScreenState extends State<OptionsScreen> {
                             ),
                         ]),
                       ),
-                      const SizedBox(height: 10),
-                      if (legs.isNotEmpty)
+                      if (legs.isNotEmpty) ...[
+                        const SizedBox(height: 10),
                         _LegBuilder(
                           legs: legs,
                           underlyingPrice: payoffPrice,
                           onPriceChanged: (value) => setState(() => payoffPrice = value),
                         ),
-                      const SizedBox(height: 10),
-                      const MascotPanel(
-                        title: '全策略不是菜单，是表达能力',
-                        message: '你可以切换到期日后继续加腿，因此 Calendar / Diagonal 也能表达。多到期组合不会被强行塞进一个错误的单到期 payoff。',
-                      ),
+                      ],
                     ]);
                   },
                 ),
@@ -223,8 +232,24 @@ class _OptionContractRow extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 6),
         child: Row(children: [
           SizedBox(width: 72, child: Text(option.strike.toStringAsFixed(0), style: const TextStyle(fontWeight: FontWeight.w700))),
-          SizedBox(width: 42, child: Text(option.isCall ? 'CALL' : 'PUT', style: TextStyle(color: option.isCall ? FxFColors.positive : FxFColors.negative, fontWeight: FontWeight.w800, fontSize: 11))),
-          Expanded(child: Text('Mark ${option.markPrice?.toStringAsFixed(4) ?? '—'} · Bid ${option.bid?.toStringAsFixed(4) ?? '—'} · Ask ${option.ask?.toStringAsFixed(4) ?? '—'}', overflow: TextOverflow.ellipsis, style: const TextStyle(color: FxFColors.muted, fontSize: 11))),
+          SizedBox(
+            width: 42,
+            child: Text(
+              option.isCall ? 'CALL' : 'PUT',
+              style: TextStyle(
+                color: option.isCall ? FxFColors.positive : FxFColors.negative,
+                fontWeight: FontWeight.w800,
+                fontSize: 11,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              'Mark ${option.markPrice?.toStringAsFixed(4) ?? '—'} · Bid ${option.bid?.toStringAsFixed(4) ?? '—'} · Ask ${option.ask?.toStringAsFixed(4) ?? '—'}',
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: FxFColors.muted, fontSize: 11),
+            ),
+          ),
           IconButton(onPressed: onBuy, tooltip: '买入腿', icon: const Icon(Icons.add_circle_outline, color: FxFColors.positive)),
           IconButton(onPressed: onSell, tooltip: '卖出腿', icon: const Icon(Icons.remove_circle_outline, color: FxFColors.negative)),
           if (selected) const Icon(Icons.check_circle, color: FxFColors.primaryDark, size: 18),
@@ -247,7 +272,6 @@ class _LegBuilder extends StatelessWidget {
     final lower = minStrike * .7;
     final upper = maxStrike * 1.3;
     final clamped = underlyingPrice.clamp(lower, upper).toDouble();
-    final pnl = sameExpiry ? OptionPayoff.deribitInverseAtExpiration(legs, clamped) : null;
     final unit = legs.first.instrument.underlying;
 
     return GlassCard(
@@ -263,13 +287,24 @@ class _LegBuilder extends StatelessWidget {
             ),
           ),
         const Divider(),
-        if (sameExpiry) ...[
-          Text('交割价 ${clamped.toStringAsFixed(2)}'),
-          Slider(value: clamped, min: lower, max: upper, onChanged: onPriceChanged),
-          Text('到期 P/L ${pnl!.toStringAsFixed(4)} $unit', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 20, color: pnl! >= 0 ? FxFColors.positive : FxFColors.negative)),
-        ] else
-          const Text('该组合包含多个到期日。Calendar / Diagonal 的价值依赖时间、波动率和远期曲面，不能用单一到期内在价值图准确表达。', style: TextStyle(color: FxFColors.warning, fontWeight: FontWeight.w700)),
+        if (sameExpiry) ..._payoffWidgets(clamped, lower, upper, unit) else const Text('多到期组合', style: TextStyle(color: FxFColors.muted)),
       ]),
     );
+  }
+
+  List<Widget> _payoffWidgets(double price, double lower, double upper, String unit) {
+    final pnl = OptionPayoff.deribitInverseAtExpiration(legs, price);
+    return [
+      Text('交割价 ${price.toStringAsFixed(2)}'),
+      Slider(value: price, min: lower, max: upper, onChanged: onPriceChanged),
+      Text(
+        '到期 P/L ${pnl.toStringAsFixed(4)} $unit',
+        style: TextStyle(
+          fontWeight: FontWeight.w800,
+          fontSize: 20,
+          color: pnl >= 0 ? FxFColors.positive : FxFColors.negative,
+        ),
+      ),
+    ];
   }
 }
