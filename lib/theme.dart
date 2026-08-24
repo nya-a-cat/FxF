@@ -18,7 +18,6 @@ ThemeData buildTheme() {
     useMaterial3: true,
     colorScheme: scheme,
     scaffoldBackgroundColor: FxFColors.bg,
-    fontFamilyFallback: const ['Noto Sans SC', 'Noto Sans CJK SC', 'sans-serif'],
     textTheme: const TextTheme(
       headlineLarge: TextStyle(color: FxFColors.ink, fontWeight: FontWeight.w800),
       headlineMedium: TextStyle(color: FxFColors.ink, fontWeight: FontWeight.w800),
