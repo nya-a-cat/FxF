@@ -13,15 +13,21 @@ void main() {
     expect(RiskAnalytics.maxDrawdown([100, 120, 90, 110]), closeTo(-0.25, 1e-9));
   });
 
-  test('option payoff supports arbitrary signed legs', () {
+  test('vanilla option payoff supports arbitrary signed legs', () {
     final call = OptionInstrument(name: 'X', underlying: 'BTC', expiration: DateTime.utc(2030), strike: 100, isCall: true, bid: null, ask: null, markPrice: null, iv: null, delta: null, gamma: null, theta: null, vega: null);
     final legs = [OptionLeg(instrument: call, quantity: 1, premium: 5)];
-    expect(OptionPayoff.atExpiration(legs, 120), 15);
-    expect(OptionPayoff.atExpiration(legs, 80), -5);
+    expect(OptionPayoff.vanillaAtExpiration(legs, 120), 15);
+    expect(OptionPayoff.vanillaAtExpiration(legs, 80), -5);
+  });
+
+  test('Deribit inverse call payoff is settled in base coin', () {
+    final call = OptionInstrument(name: 'BTC-X', underlying: 'BTC', expiration: DateTime.utc(2030), strike: 100000, isCall: true, bid: null, ask: null, markPrice: null, iv: null, delta: null, gamma: null, theta: null, vega: null);
+    final legs = [OptionLeg(instrument: call, quantity: 1, premium: 0.05)];
+    expect(OptionPayoff.deribitInverseAtExpiration(legs, 125000), closeTo(0.15, 1e-9));
   });
 
   test('backtest rejects inverted EMA parameters', () {
-    final candles = List.generate(20, (i) => Candle(openTime: DateTime.utc(2026, 1, 1).add(Duration(hours: i)), open: 100+i.toDouble(), high: 101+i.toDouble(), low: 99+i.toDouble(), close: 100+i.toDouble(), volume: 1));
+    final candles = List.generate(20, (i) => Candle(openTime: DateTime.utc(2026, 1, 1).add(Duration(hours: i)), open: 100 + i.toDouble(), high: 101 + i.toDouble(), low: 99 + i.toDouble(), close: 100 + i.toDouble(), volume: 1));
     expect(() => const BacktestEngine().emaCross(candles, const BacktestConfig(fastEma: 10, slowEma: 5)), throwsArgumentError);
   });
 }
